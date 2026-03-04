@@ -110,9 +110,9 @@ class CalibrationEngine:
     ) -> dict:
         """Extract predicted JTBD/pains/workarounds from persona + sessions."""
         # Use persona's defined attributes as baseline predictions
-        predicted_jobs = list(persona.goals or [])
-        predicted_pains = list(persona.frustrations or [])
-        predicted_workarounds = list(persona.current_tools or [])
+        predicted_jobs = persona.goals if isinstance(persona.goals, list) else []
+        predicted_pains = persona.frustrations if isinstance(persona.frustrations, list) else []
+        predicted_workarounds = persona.current_tools if isinstance(persona.current_tools, list) else []
 
         # Add any insights extracted during sessions
         for session in sessions:

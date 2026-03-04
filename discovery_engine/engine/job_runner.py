@@ -62,11 +62,14 @@ async def _run_analysis_job(job_id: str) -> None:
         db.commit()
     except Exception as exc:
         db.rollback()
-        failed_job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id).first()
-        if failed_job:
-            failed_job.status = "failed"
-            failed_job.error_message = str(exc)
-            failed_job.completed_at = datetime.now(timezone.utc)
-            db.commit()
+        try:
+            failed_job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id).first()
+            if failed_job:
+                failed_job.status = "failed"
+                failed_job.error_message = str(exc)
+                failed_job.completed_at = datetime.now(timezone.utc)
+                db.commit()
+        except Exception:
+            pass  # Job stuck in unknown state; better than crashing error handler
     finally:
         db.close()

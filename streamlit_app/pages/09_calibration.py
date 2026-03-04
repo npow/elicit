@@ -118,22 +118,22 @@ if st.button("Run Calibration"):
 
                 metric_cols = st.columns(4)
                 with metric_cols[0]:
-                    overall = result.get("overall_accuracy", 0)
+                    overall = max(0.0, min(1.0, float(result.get("overall_accuracy") or 0)))
                     st.metric("Overall Accuracy", f"{int(overall * 100)}%")
                     st.progress(overall)
 
                 with metric_cols[1]:
-                    job_overlap = result.get("job_overlap_score", 0)
+                    job_overlap = max(0.0, min(1.0, float(result.get("job_overlap_score") or 0)))
                     st.metric("Job Overlap", f"{int(job_overlap * 100)}%")
                     st.progress(job_overlap)
 
                 with metric_cols[2]:
-                    pain_overlap = result.get("pain_overlap_score", 0)
+                    pain_overlap = max(0.0, min(1.0, float(result.get("pain_overlap_score") or 0)))
                     st.metric("Pain Overlap", f"{int(pain_overlap * 100)}%")
                     st.progress(pain_overlap)
 
                 with metric_cols[3]:
-                    wa_overlap = result.get("workaround_overlap_score", 0)
+                    wa_overlap = max(0.0, min(1.0, float(result.get("workaround_overlap_score") or 0)))
                     st.metric("Workaround Overlap", f"{int(wa_overlap * 100)}%")
                     st.progress(wa_overlap)
 

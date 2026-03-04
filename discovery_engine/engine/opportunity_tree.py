@@ -71,7 +71,7 @@ class OpportunityTreeEngine:
                 })["children"].append(node)
 
         # Attach opportunities with scores
-        for opp in sorted(opportunities, key=lambda o: o.opportunity_score, reverse=True):
+        for opp in sorted(opportunities, key=lambda o: o.opportunity_score or 0.0, reverse=True):
             node = {
                 "name": opp.description,
                 "type": "opportunity",

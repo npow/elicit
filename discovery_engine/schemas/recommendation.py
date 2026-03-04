@@ -1,11 +1,21 @@
 """Pydantic schemas for recommendations and their evidence chains."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from discovery_engine.schemas.normalization import to_score_0_1, to_text
 
 
 # ---------------------------------------------------------------------------
 # LLM output-parsing schema
 # ---------------------------------------------------------------------------
+
+
+def _list_or_str_to_text(v) -> str:
+    """Accept a list of strings or a plain string; return a single newline-joined string."""
+    if isinstance(v, list):
+        parts = [str(item).strip() for item in v if item]
+        return "\n".join(parts)
+    return to_text(v)
 
 
 class RecommendationExtracted(BaseModel):
@@ -19,6 +29,21 @@ class RecommendationExtracted(BaseModel):
     rationale: str = ""
     risks: str = ""
     next_steps: str = ""
+
+    @field_validator("title", "description", "category", "rationale", mode="before")
+    @classmethod
+    def _to_text_fields(cls, v):
+        return to_text(v)
+
+    @field_validator("risks", "next_steps", mode="before")
+    @classmethod
+    def _to_list_or_text(cls, v):
+        return _list_or_str_to_text(v)
+
+    @field_validator("priority_score", "confidence", mode="before")
+    @classmethod
+    def _normalize_scores(cls, v):
+        return to_score_0_1(v)
 
 
 # ---------------------------------------------------------------------------
@@ -48,8 +73,10 @@ class RecommendationResponse(BaseModel):
     title: str
     description: str
     priority_score: float
+    priority_rank: int = 0
     category: str
     confidence: float
+    supporting_interview_count: int = 0
     rationale: str
     risks: str
     next_steps: str

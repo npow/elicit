@@ -28,11 +28,15 @@ async def run_calibration(
         raise HTTPException(status_code=404, detail=str(exc))
     return {
         "id": record.id,
+        "project_id": record.project_id,
+        "persona_id": record.persona_id,
+        "interview_id": record.interview_id,
         "overall_accuracy": record.overall_accuracy,
         "job_overlap_score": record.job_overlap_score,
         "pain_overlap_score": record.pain_overlap_score,
         "workaround_overlap_score": record.workaround_overlap_score,
         "notes": record.notes,
+        "created_at": record.created_at.isoformat() if record.created_at else "",
     }
 
 

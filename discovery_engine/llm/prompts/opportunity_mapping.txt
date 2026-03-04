@@ -42,7 +42,8 @@ Return your response as a valid JSON array. Do not include any text outside the 
     "satisfaction_score": 1-10,
     "market_size_indicator": "niche | segment | broad | universal",
     "level": "strategic | tactical | quick_win",
-    "confidence": "high | medium | low"
+    "confidence": "high | medium | low",
+    "related_job_statement": "Copy the exact job statement from the Jobs list that this opportunity most directly addresses, or empty string if not tied to a specific job"
   }
 ]
 

@@ -1,5 +1,6 @@
 """Interview upload, transcription, and retrieval endpoints."""
 
+import os
 import tempfile
 from pathlib import Path
 
@@ -24,6 +25,9 @@ def upload_text_interview(
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+
+    if not payload.transcript or not payload.transcript.strip():
+        raise HTTPException(status_code=422, detail="Transcript cannot be empty")
 
     interview = Interview(
         project_id=project_id,
@@ -61,8 +65,15 @@ async def upload_audio_interview(
         tmp.write(content)
         tmp_path = tmp.name
 
-    # Transcribe
-    transcript = await _transcribe(tmp_path)
+    # Transcribe — always clean up temp file regardless of success/failure
+    try:
+        transcript = await _transcribe(tmp_path)
+    except Exception:
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
     interview = Interview(
         project_id=project_id,
@@ -104,8 +115,14 @@ def delete_interview(interview_id: str, db: Session = Depends(get_db)):
     interview = db.query(Interview).filter(Interview.id == interview_id).first()
     if not interview:
         raise HTTPException(status_code=404, detail="Interview not found")
+    audio_path = interview.audio_path if interview.source_type == "audio" else None
     db.delete(interview)
     db.commit()
+    if audio_path:
+        try:
+            os.unlink(audio_path)
+        except OSError:
+            pass
     return {"deleted": True}
 
 

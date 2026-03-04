@@ -89,7 +89,7 @@ if not projects:
     st.info("No projects yet. Create one above to get started.")
     st.stop()
 
-project_options = {p["id"]: f"{p['name']}  ({p['interview_count']} interviews)" for p in projects}
+project_options = {p.get("id", ""): f"{p.get('name', 'Unnamed')}  ({p.get('interview_count', 0)} interviews)" for p in projects if p.get("id")}
 
 # Pre-select the stored project, if any
 current_project_id = st.session_state.get("project_id")
@@ -128,6 +128,47 @@ if selected_project:
 
     st.markdown("**Hypothesis**")
     st.write(selected_project["hypothesis"] or "_No hypothesis set._")
+
+    # ---------------------------------------------------------------------------
+    # Discovery progress status
+    # ---------------------------------------------------------------------------
+    st.divider()
+    st.markdown("**Discovery Progress**")
+
+    try:
+        ivs_resp = _api("get", f"/interviews/{selected_id}")
+        ivs_resp.raise_for_status()
+        all_ivs = ivs_resp.json()
+        analyzed = [iv for iv in all_ivs if iv.get("status") == "analyzed"]
+        n_total = len(all_ivs)
+        n_analyzed = len(analyzed)
+    except httpx.HTTPError:
+        all_ivs, n_total, n_analyzed = [], 0, 0
+
+    try:
+        pat_resp = _api("get", f"/analysis/patterns/{selected_id}")
+        pat_resp.raise_for_status()
+        n_patterns = len(pat_resp.json())
+    except httpx.HTTPError:
+        n_patterns = 0
+
+    try:
+        rec_resp = _api("get", f"/analysis/recommendations/{selected_id}")
+        rec_resp.raise_for_status()
+        n_recs = len(rec_resp.json())
+    except httpx.HTTPError:
+        n_recs = 0
+
+    steps = [
+        ("1. Upload interviews", n_total > 0, f"{n_total} uploaded"),
+        ("2. Extract insights", n_analyzed > 0, f"{n_analyzed}/{n_total} analyzed"),
+        ("3. Synthesize patterns", n_patterns > 0, f"{n_patterns} patterns found"),
+        ("4. Generate recommendations", n_recs > 0, f"{n_recs} recommendations"),
+    ]
+
+    for label, done, detail in steps:
+        icon = "✅" if done else "⬜"
+        st.markdown(f"{icon} **{label}** — {detail}")
 
     # ---- Delete project ----
     st.divider()

@@ -1,6 +1,8 @@
 """Pydantic schemas for interview coaching — guides and quality scoring."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from discovery_engine.schemas.normalization import to_score_0_1, to_text
 
 
 # ---------------------------------------------------------------------------
@@ -26,6 +28,18 @@ class InterviewGuideExtracted(BaseModel):
     anti_patterns_to_avoid: list[str] = []
     success_criteria: str = ""
 
+    @field_validator("title", mode="before")
+    @classmethod
+    def _to_text_fields(cls, v):
+        return to_text(v)
+
+    @field_validator("success_criteria", mode="before")
+    @classmethod
+    def _success_criteria_to_text(cls, v):
+        if isinstance(v, list):
+            return "\n".join(str(item).strip() for item in v if item)
+        return to_text(v)
+
 
 class InterviewGuideResponse(BaseModel):
     """Persisted interview guide returned via the API."""
@@ -33,6 +47,8 @@ class InterviewGuideResponse(BaseModel):
     id: str
     project_id: str
     title: str
+    hypothesis: str = ""
+    target_persona: str = ""
     opening_questions: list[dict]
     deep_dive_questions: list[dict]
     validation_questions: list[dict]
@@ -60,6 +76,21 @@ class QualityScoreExtracted(BaseModel):
     missed_opportunities: list[dict] = []
     strengths: list[str] = []
     suggestions: list[str] = []
+
+    @field_validator(
+        "overall_score",
+        "mom_test_compliance",
+        "question_quality",
+        "insight_depth",
+        "bias_score",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_scores(cls, v):
+        # Handle {"score": 0-100, "details": "..."} nested form from older prompt
+        if isinstance(v, dict):
+            v = v.get("score", 0)
+        return to_score_0_1(v)
 
 
 class QualityScoreResponse(BaseModel):

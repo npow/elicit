@@ -118,11 +118,11 @@ st.subheader("Quality Scores")
 
 gauge_cols = st.columns(5)
 
-overall = score.get("overall_score", 0)
-mom_test = score.get("mom_test_compliance", 0)
-q_quality = score.get("question_quality", 0)
-insight = score.get("insight_depth", 0)
-bias = score.get("bias_score", 0)
+overall = max(0.0, min(1.0, float(score.get("overall_score") or 0)))
+mom_test = max(0.0, min(1.0, float(score.get("mom_test_compliance") or 0)))
+q_quality = max(0.0, min(1.0, float(score.get("question_quality") or 0)))
+insight = max(0.0, min(1.0, float(score.get("insight_depth") or 0)))
+bias = max(0.0, min(1.0, float(score.get("bias_score") or 0)))
 
 with gauge_cols[0]:
     st.metric("Overall Score", f"{int(overall * 100)}%", delta_color=_score_color(overall))

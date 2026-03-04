@@ -168,7 +168,11 @@ if st.session_state.sim_session_id:
                     # Show final quality score if available
                     quality = final_session.get("session_quality_score")
                     if quality is not None:
-                        st.info(f"Session quality score: **{int(quality * 100)}%**")
+                        try:
+                            q = max(0.0, min(1.0, float(quality)))
+                            st.info(f"Session quality score: **{int(q * 100)}%**")
+                        except (TypeError, ValueError):
+                            pass
 
                     st.success("Interview session ended.")
                     st.rerun()
@@ -176,7 +180,8 @@ if st.session_state.sim_session_id:
                     st.error(f"Failed to end session: {exc}")
 
     with status_col:
-        st.caption(f"Session: `{st.session_state.sim_session_id[:8]}...`")
+        session_id = st.session_state.sim_session_id or ""
+        st.caption(f"Session: `{session_id[:8]}...`")
 
     # Display message history
     for msg in st.session_state.sim_messages:

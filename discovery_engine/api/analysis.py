@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from discovery_engine.database import get_db
+from discovery_engine.models.project import Project
 from discovery_engine.models.interview import Interview
 from discovery_engine.models.extraction import Job, PainPoint, Workaround, Opportunity
 from discovery_engine.models.synthesis import CrossInterviewPattern
@@ -39,12 +40,14 @@ async def queue_extraction_job(interview_id: str, db: Session = Depends(get_db))
     db.commit()
     db.refresh(job)
     schedule_analysis_job(job.id)
-    return _job_dict(job)
+    return _analysis_job_dict(job)
 
 
 @router.post("/jobs/synthesize/{project_id}")
 async def queue_synthesis_job(project_id: str, db: Session = Depends(get_db)):
     """Queue cross-interview synthesis as an async background job."""
+    if not db.query(Project).filter(Project.id == project_id).first():
+        raise HTTPException(status_code=404, detail="Project not found")
     job = AnalysisJob(
         job_type="synthesize",
         status="queued",
@@ -54,12 +57,14 @@ async def queue_synthesis_job(project_id: str, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(job)
     schedule_analysis_job(job.id)
-    return _job_dict(job)
+    return _analysis_job_dict(job)
 
 
 @router.post("/jobs/recommend/{project_id}")
 async def queue_recommendation_job(project_id: str, db: Session = Depends(get_db)):
     """Queue recommendation generation as an async background job."""
+    if not db.query(Project).filter(Project.id == project_id).first():
+        raise HTTPException(status_code=404, detail="Project not found")
     job = AnalysisJob(
         job_type="recommend",
         status="queued",
@@ -69,7 +74,7 @@ async def queue_recommendation_job(project_id: str, db: Session = Depends(get_db
     db.commit()
     db.refresh(job)
     schedule_analysis_job(job.id)
-    return _job_dict(job)
+    return _analysis_job_dict(job)
 
 
 @router.get("/jobs/{job_id}")
@@ -78,7 +83,7 @@ def get_job(job_id: str, db: Session = Depends(get_db)):
     job = db.query(AnalysisJob).filter(AnalysisJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return _job_dict(job)
+    return _analysis_job_dict(job)
 
 
 @router.get("/jobs")
@@ -88,7 +93,7 @@ def list_jobs(project_id: str | None = None, limit: int = 20, db: Session = Depe
     if project_id:
         q = q.filter(AnalysisJob.project_id == project_id)
     jobs = q.order_by(AnalysisJob.created_at.desc()).limit(limit).all()
-    return [_job_dict(j) for j in jobs]
+    return [_analysis_job_dict(j) for j in jobs]
 
 
 @router.post("/extract/{interview_id}")
@@ -115,6 +120,8 @@ async def run_extraction(interview_id: str, db: Session = Depends(get_db)):
 @router.post("/synthesize/{project_id}")
 async def run_synthesis(project_id: str, db: Session = Depends(get_db)):
     """Run cross-interview pattern detection."""
+    if not db.query(Project).filter(Project.id == project_id).first():
+        raise HTTPException(status_code=404, detail="Project not found")
     engine = SynthesisEngine(db)
     patterns = await engine.synthesize(project_id)
     return {
@@ -206,9 +213,19 @@ def get_recommendations(project_id: str, db: Session = Depends(get_db)):
         .order_by(Recommendation.priority_rank)
         .all()
     )
+    if not recs:
+        return []
+
+    # Batch fetch all evidence chains in one query to avoid N+1.
+    rec_ids = [r.id for r in recs]
+    all_chains = db.query(EvidenceChain).filter(EvidenceChain.recommendation_id.in_(rec_ids)).all()
+    chains_by_rec: dict[str, list] = {r.id: [] for r in recs}
+    for c in all_chains:
+        chains_by_rec[c.recommendation_id].append(c)
+
     result = []
     for r in recs:
-        chains = db.query(EvidenceChain).filter(EvidenceChain.recommendation_id == r.id).all()
+        chains = chains_by_rec[r.id]
         result.append({
             "id": r.id,
             "title": r.title,
@@ -225,6 +242,7 @@ def get_recommendations(project_id: str, db: Session = Depends(get_db)):
                     "id": c.id,
                     "interview_id": c.interview_id,
                     "evidence_type": c.evidence_type,
+                    "source_id": c.source_id,
                     "quote": c.quote,
                     "relevance_score": c.relevance_score,
                 }
@@ -289,12 +307,15 @@ def _wa_dict(w: Workaround) -> dict:
 def _opp_dict(o: Opportunity) -> dict:
     return {
         "id": o.id,
+        "interview_id": o.interview_id,
         "description": o.description,
         "opportunity_score": o.opportunity_score,
         "importance_score": o.importance_score,
         "satisfaction_score": o.satisfaction_score,
         "market_size_indicator": o.market_size_indicator,
+        "level": o.level,
         "confidence": o.confidence,
+        "created_at": o.created_at.isoformat() if o.created_at else "",
     }
 
 
@@ -302,7 +323,7 @@ def _iso(value: datetime | None) -> str:
     return value.isoformat() if value else ""
 
 
-def _job_dict(job: AnalysisJob) -> dict:
+def _analysis_job_dict(job: AnalysisJob) -> dict:
     return {
         "id": job.id,
         "job_type": job.job_type,

@@ -104,6 +104,8 @@ class SimulatorEngine:
             raise ValueError("Session is not active")
 
         persona = self.db.query(SyntheticPersona).filter(SyntheticPersona.id == session.persona_id).first()
+        if not persona:
+            raise ValueError(f"Persona {session.persona_id} not found")
 
         # Build system prompt
         template = "adversarial_persona_system.txt" if persona.is_adversarial else "synthetic_interview_system.txt"
@@ -132,7 +134,7 @@ class SimulatorEngine:
         mom_test_result = await self._validate_mom_test(user_message)
 
         # Update session
-        updated_messages = list(session.messages)
+        updated_messages = list(session.messages) if session.messages else []
         updated_messages.append({"role": "user", "content": user_message})
         updated_messages.append({"role": "assistant", "content": response})
         session.messages = updated_messages
@@ -154,11 +156,27 @@ class SimulatorEngine:
         }
 
     async def end_session(self, session_id: str) -> SyntheticSession:
-        """End a session and extract insights."""
+        """End a session, compute quality score, and persist."""
         session = self.db.query(SyntheticSession).filter(SyntheticSession.id == session_id).first()
         if not session:
             raise ValueError(f"Session {session_id} not found")
 
+        messages = session.messages or []
+        user_turns = [m for m in messages if m.get("role") == "user"]
+        violations = session.mom_test_violations or []
+
+        turn_count = len(user_turns)
+        violation_count = len(violations)
+
+        if turn_count == 0:
+            session.session_quality_score = 0.0
+        else:
+            # Engagement: more turns (up to 10) is better practice.
+            engagement = min(1.0, turn_count / 10.0)
+            # Compliance: fewer violations per question is better.
+            violation_rate = violation_count / turn_count
+            compliance = max(0.0, 1.0 - violation_rate)
+            session.session_quality_score = round(0.35 * engagement + 0.65 * compliance, 2)
         session.status = "completed"
         self.db.commit()
         return session

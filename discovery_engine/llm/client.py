@@ -71,24 +71,26 @@ async def complete(
         messages.append({"role": "system", "content": system_message})
     messages.append({"role": "user", "content": prompt})
 
+    json_mode = {"type": "json_object"} if "json" in prompt.lower() else None
     try:
         response = await litellm.acompletion(
             model=model,
             messages=messages,
             max_tokens=max_tokens,
             temperature=temp,
-            response_format={"type": "json_object"} if "json" in prompt.lower() else None,
+            response_format=json_mode,
         )
         return response.choices[0].message.content
     except Exception:
         if tier == "primary":
-            # Retry with fallback model
+            # Retry with fallback model, preserving response_format constraint
             fallback = _get_model("fallback")
             response = await litellm.acompletion(
                 model=fallback,
                 messages=messages,
                 max_tokens=max_tokens,
                 temperature=temp,
+                response_format=json_mode,
             )
             return response.choices[0].message.content
         raise

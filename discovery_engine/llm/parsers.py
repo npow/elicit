@@ -33,23 +33,40 @@ def extract_json(text: str) -> dict | list:
         except json.JSONDecodeError:
             pass
 
-    # 3. First JSON object or array
+    # 3. First JSON object or array — string-aware bracket matching
     for start_char, end_char in [("{", "}"), ("[", "]")]:
         start = text.find(start_char)
         if start == -1:
             continue
-        # Find matching close bracket
         depth = 0
+        in_string = False
+        escape_next = False
+        end_pos = -1
         for i in range(start, len(text)):
-            if text[i] == start_char:
+            c = text[i]
+            if escape_next:
+                escape_next = False
+                continue
+            if c == "\\" and in_string:
+                escape_next = True
+                continue
+            if c == '"':
+                in_string = not in_string
+                continue
+            if in_string:
+                continue
+            if c == start_char:
                 depth += 1
-            elif text[i] == end_char:
+            elif c == end_char:
                 depth -= 1
                 if depth == 0:
-                    try:
-                        return json.loads(text[start : i + 1])
-                    except json.JSONDecodeError:
-                        break
+                    end_pos = i
+                    break
+        if end_pos != -1:
+            try:
+                return json.loads(text[start : end_pos + 1])
+            except json.JSONDecodeError:
+                pass
 
     raise ValueError(f"Could not extract JSON from LLM output: {text[:200]}...")
 
@@ -92,4 +109,10 @@ def parse_llm_list(text: str, schema: Type[T]) -> list[T]:
     else:
         raise ValueError(f"Expected list or dict, got {type(data)}")
 
-    return [schema.model_validate(item) for item in items]
+    parsed: list[T] = []
+    for item in items:
+        try:
+            parsed.append(schema.model_validate(item))
+        except ValidationError:
+            continue
+    return parsed

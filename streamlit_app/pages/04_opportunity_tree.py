@@ -74,7 +74,8 @@ def _render_tree_node(node: dict, depth: int = 0) -> None:
             if node.get("supporting_quote"):
                 st.markdown(f"> *\"{node['supporting_quote']}\"*")
             if node.get("confidence") is not None:
-                st.progress(float(node["confidence"]), text=f"Confidence: {int(float(node['confidence']) * 100)}%")
+                _conf = max(0.0, min(1.0, float(node.get("confidence") or 0)))
+                st.progress(_conf, text=f"Confidence: {int(_conf * 100)}%")
             for child in children:
                 _render_tree_node(child, depth + 1)
     else:
@@ -87,7 +88,8 @@ def _render_tree_node(node: dict, depth: int = 0) -> None:
             if node.get("supporting_quote"):
                 st.markdown(f"> *\"{node['supporting_quote']}\"*")
             if node.get("confidence") is not None:
-                st.progress(float(node["confidence"]), text=f"Confidence: {int(float(node['confidence']) * 100)}%")
+                _conf = max(0.0, min(1.0, float(node.get("confidence") or 0)))
+                st.progress(_conf, text=f"Confidence: {int(_conf * 100)}%")
 
 
 # ---------------------------------------------------------------------------

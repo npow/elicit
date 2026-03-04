@@ -1,6 +1,8 @@
 """Pydantic schemas for calibration — comparing simulated vs. real interview data."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from discovery_engine.schemas.normalization import to_score_0_1, to_text
 
 
 # ---------------------------------------------------------------------------
@@ -25,6 +27,22 @@ class CalibrationExtracted(BaseModel):
     analysis: str = ""
     recommendations_for_improvement: list[str] = []
 
+    @field_validator(
+        "job_overlap_score",
+        "pain_overlap_score",
+        "workaround_overlap_score",
+        "overall_accuracy",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_scores(cls, v):
+        return to_score_0_1(v)
+
+    @field_validator("analysis", mode="before")
+    @classmethod
+    def _to_text_field(cls, v):
+        return to_text(v)
+
 
 # ---------------------------------------------------------------------------
 # API response schema
@@ -42,10 +60,6 @@ class CalibrationResponse(BaseModel):
     pain_overlap_score: float
     workaround_overlap_score: float
     overall_accuracy: float
-    analysis: str
-    recommendations_for_improvement: list[str]
-    predicted_data: dict
-    actual_data: dict
     notes: str
     created_at: str
 

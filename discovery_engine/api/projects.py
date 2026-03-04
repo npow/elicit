@@ -1,6 +1,7 @@
 """CRUD endpoints for projects."""
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from discovery_engine.database import get_db
@@ -22,13 +23,25 @@ def create_project(payload: ProjectCreate, db: Session = Depends(get_db)):
     db.add(project)
     db.commit()
     db.refresh(project)
-    return _to_response(project, db)
+    count = db.query(Interview).filter(Interview.project_id == project.id).count()
+    return _to_response(project, count)
 
 
 @router.get("/", response_model=list[ProjectResponse])
 def list_projects(db: Session = Depends(get_db)):
     projects = db.query(Project).order_by(Project.created_at.desc()).all()
-    return [_to_response(p, db) for p in projects]
+    if not projects:
+        return []
+    # Batch fetch counts to avoid N+1.
+    project_ids = [p.id for p in projects]
+    count_rows = (
+        db.query(Interview.project_id, func.count(Interview.id).label("cnt"))
+        .filter(Interview.project_id.in_(project_ids))
+        .group_by(Interview.project_id)
+        .all()
+    )
+    counts = {row.project_id: row.cnt for row in count_rows}
+    return [_to_response(p, counts.get(p.id, 0)) for p in projects]
 
 
 @router.get("/{project_id}", response_model=ProjectResponse)
@@ -36,7 +49,8 @@ def get_project(project_id: str, db: Session = Depends(get_db)):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    return _to_response(project, db)
+    count = db.query(Interview).filter(Interview.project_id == project_id).count()
+    return _to_response(project, count)
 
 
 @router.patch("/{project_id}", response_model=ProjectResponse)
@@ -48,7 +62,8 @@ def update_project(project_id: str, payload: ProjectUpdate, db: Session = Depend
         setattr(project, field, value)
     db.commit()
     db.refresh(project)
-    return _to_response(project, db)
+    count = db.query(Interview).filter(Interview.project_id == project_id).count()
+    return _to_response(project, count)
 
 
 @router.delete("/{project_id}")
@@ -61,8 +76,8 @@ def delete_project(project_id: str, db: Session = Depends(get_db)):
     return {"deleted": True}
 
 
-def _to_response(project: Project, db: Session) -> dict:
-    count = db.query(Interview).filter(Interview.project_id == project.id).count()
+def _to_response(project: Project, interview_count: int = 0) -> dict:
+    count = interview_count
     return {
         "id": project.id,
         "name": project.name,

@@ -1,6 +1,6 @@
 """Pydantic schemas for simulated personas and chat sessions."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ---------------------------------------------------------------------------
@@ -26,6 +26,30 @@ class PersonaExtracted(BaseModel):
     frustrations: list[str] = []
     current_tools: list[str] = []
     behavioral_traits: list[str] = []
+
+    @field_validator("current_tools", mode="before")
+    @classmethod
+    def _normalize_tools(cls, v):
+        """LLM returns list[{tool, usage, satisfaction}]; extract tool name."""
+        if not isinstance(v, list):
+            return []
+        result = []
+        for item in v:
+            if isinstance(item, dict):
+                result.append(str(item.get("tool") or next(iter(item.values()), "")))
+            else:
+                result.append(str(item))
+        return result
+
+    @field_validator("behavioral_traits", mode="before")
+    @classmethod
+    def _normalize_traits(cls, v):
+        """LLM returns {tech_savviness: ..., change_tolerance: ...}; flatten to list."""
+        if isinstance(v, dict):
+            return [f"{k}: {val}" for k, val in v.items()]
+        if isinstance(v, list):
+            return [str(item) if not isinstance(item, str) else item for item in v]
+        return []
 
 
 class PersonaResponse(BaseModel):

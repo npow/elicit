@@ -37,3 +37,4 @@ class EvidenceChain(TimestampMixin, Base):
     relevance_score: Mapped[float] = mapped_column(Float, default=0.0)
 
     recommendation = relationship("Recommendation", back_populates="evidence_chains")
+    interview = relationship("Interview")

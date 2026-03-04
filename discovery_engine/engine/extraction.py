@@ -12,6 +12,7 @@ from discovery_engine.schemas.extraction import (
     WorkaroundExtracted,
     OpportunityExtracted,
 )
+from discovery_engine.schemas.normalization import text_similarity
 
 
 class ExtractionEngine:
@@ -36,7 +37,7 @@ class ExtractionEngine:
                 importance=item.importance,
                 satisfaction=item.satisfaction,
                 supporting_quote=item.supporting_quote,
-                confidence=item.confidence,
+                confidence=_confidence_or_default(item.confidence, default=0.72),
             )
             self.db.add(job)
             jobs.append(job)
@@ -57,7 +58,7 @@ class ExtractionEngine:
                 frequency=item.frequency,
                 emotional_intensity=item.emotional_intensity,
                 supporting_quote=item.supporting_quote,
-                confidence=item.confidence,
+                confidence=_confidence_or_default(item.confidence, default=0.72),
             )
             self.db.add(pain)
             pains.append(pain)
@@ -78,7 +79,7 @@ class ExtractionEngine:
                 effort_level=item.effort_level,
                 satisfaction_with_workaround=item.satisfaction_with_workaround,
                 supporting_quote=item.supporting_quote,
-                confidence=item.confidence,
+                confidence=_confidence_or_default(item.confidence, default=0.68),
             )
             self.db.add(wa)
             workarounds.append(wa)
@@ -87,20 +88,33 @@ class ExtractionEngine:
     async def extract_all(self, interview: Interview) -> dict:
         """Run all extraction steps on an interview and persist results."""
         # Replace prior extractions to keep reruns idempotent.
-        self.db.query(Opportunity).filter(Opportunity.interview_id == interview.id).delete()
-        self.db.query(Workaround).filter(Workaround.interview_id == interview.id).delete()
-        self.db.query(PainPoint).filter(PainPoint.interview_id == interview.id).delete()
-        self.db.query(Job).filter(Job.interview_id == interview.id).delete()
+        self.db.query(Opportunity).filter(Opportunity.interview_id == interview.id).delete(synchronize_session=False)
+        self.db.query(Workaround).filter(Workaround.interview_id == interview.id).delete(synchronize_session=False)
+        self.db.query(PainPoint).filter(PainPoint.interview_id == interview.id).delete(synchronize_session=False)
+        self.db.query(Job).filter(Job.interview_id == interview.id).delete(synchronize_session=False)
 
-        jobs = await self.extract_jobs(interview)
-        pains = await self.extract_pain_points(interview)
-        workarounds = await self.extract_workarounds(interview)
+        try:
+            jobs = await self.extract_jobs(interview)
+            pains = await self.extract_pain_points(interview)
+            workarounds = await self.extract_workarounds(interview)
 
-        # Map opportunities from the extractions
-        opportunities = await self._map_opportunities(interview, jobs, pains, workarounds)
+            # Flush so jobs/pains have DB-assigned IDs before linking.
+            self.db.flush()
 
-        interview.status = "analyzed"
-        self.db.commit()
+            # Link pains to their closest job by text similarity.
+            _link_pains_to_jobs(pains, jobs)
+
+            # Link workarounds to their closest pain point.
+            _link_workarounds_to_pains(workarounds, pains)
+
+            # Map opportunities from the extractions (also links to jobs).
+            opportunities = await self._map_opportunities(interview, jobs, pains, workarounds)
+
+            interview.status = "analyzed"
+            self.db.commit()
+        except Exception:
+            self.db.rollback()
+            raise
 
         return {
             "jobs": jobs,
@@ -140,8 +154,64 @@ class ExtractionEngine:
                 satisfaction_score=item.satisfaction_score,
                 market_size_indicator=item.market_size_indicator,
                 level=item.level,
-                confidence=item.confidence,
+                confidence=_confidence_or_default(item.confidence, default=0.65),
             )
             self.db.add(opp)
             opps.append(opp)
+
+        # Flush to get opportunity IDs, then link each to its best-matching job.
+        self.db.flush()
+        if jobs:
+            for opp, item in zip(opps, parsed):
+                if item.related_job_statement:
+                    best_job, score = _best_match(item.related_job_statement, jobs, lambda j: j.statement)
+                    if best_job and score >= 0.05:
+                        opp.related_job_id = best_job.id
+
         return opps
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
+def _confidence_or_default(value: float | None, default: float) -> float:
+    """Return value if it's a usable float ≥ 0, else return default."""
+    if value is None:
+        return default
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return default
+    return default if num < 0 else num  # 0.0 is valid (completely uncertain)
+
+
+def _best_match(query: str, candidates: list, key_fn) -> tuple:
+    """Return (candidate, score) with highest text similarity to query."""
+    best, best_score = None, 0.0
+    for c in candidates:
+        score = text_similarity(query, key_fn(c))
+        if score > best_score:
+            best, best_score = c, score
+    return best, best_score
+
+
+def _link_pains_to_jobs(pains: list[PainPoint], jobs: list[Job]) -> None:
+    """Set related_job_id on each pain point using text similarity."""
+    if not jobs or not pains:
+        return
+    for pain in pains:
+        best_job, score = _best_match(pain.description, jobs, lambda j: j.statement)
+        if best_job and score >= 0.05:
+            pain.related_job_id = best_job.id
+
+
+def _link_workarounds_to_pains(workarounds: list[Workaround], pains: list[PainPoint]) -> None:
+    """Set related_pain_id on each workaround using text similarity."""
+    if not pains or not workarounds:
+        return
+    for wa in workarounds:
+        best_pain, score = _best_match(wa.description, pains, lambda p: p.description)
+        if best_pain and score >= 0.05:
+            wa.related_pain_id = best_pain.id

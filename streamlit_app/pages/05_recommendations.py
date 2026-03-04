@@ -31,20 +31,28 @@ def _wait_for_job(job_id: str, timeout_s: int = 120) -> dict:
     deadline = time.time() + timeout_s
     last = {}
     while time.time() < deadline:
-        resp = _api("get", f"/analysis/jobs/{job_id}")
-        resp.raise_for_status()
-        last = resp.json()
-        if last.get("status") in {"completed", "failed"}:
-            return last
+        try:
+            resp = _api("get", f"/analysis/jobs/{job_id}")
+            resp.raise_for_status()
+            last = resp.json()
+            if last.get("status") in {"completed", "failed"}:
+                return last
+        except httpx.HTTPError:
+            pass
         time.sleep(1.0)
     return last
 
 
 CATEGORY_COLORS = {
+    # LLM prompt categories
+    "build_now": "#E53935",
+    "validate_first": "#FB8C00",
+    "iterate": "#43A047",
+    "deprioritize": "#9E9E9E",
+    "pivot": "#7B1FA2",
+    # Fallback categories (from heuristic path)
     "must_have": "#E53935",
     "performance": "#FB8C00",
-    "delighter": "#43A047",
-    "table_stakes": "#1E88E5",
 }
 
 
@@ -102,7 +110,7 @@ if not recommendations:
 # Sort by priority_rank
 # ---------------------------------------------------------------------------
 
-recommendations.sort(key=lambda r: r.get("priority_rank") or r.get("priority_score", 0))
+recommendations.sort(key=lambda r: r.get("priority_rank") if r.get("priority_rank") is not None else r.get("priority_score", 0))
 
 # ---------------------------------------------------------------------------
 # Dashboard summary
@@ -154,7 +162,8 @@ for rec in recommendations:
             )
         with header_cols[2]:
             st.metric("Priority Score", f"{priority_score:.2f}")
-            st.progress(confidence, text=f"Confidence: {int(confidence * 100)}%")
+            _conf = max(0.0, min(1.0, float(confidence or 0)))
+            st.progress(_conf, text=f"Confidence: {int(_conf * 100)}%")
 
         # Description
         if desc:
@@ -167,10 +176,20 @@ for rec in recommendations:
             st.write(rationale or "_Not provided._")
         with detail_cols[1]:
             st.markdown("**Risks**")
-            st.write(risks or "_None identified._")
+            if risks:
+                for line in risks.split("\n"):
+                    if line.strip():
+                        st.markdown(f"- {line.strip()}")
+            else:
+                st.write("_None identified._")
         with detail_cols[2]:
             st.markdown("**Next Steps**")
-            st.write(next_steps or "_Not specified._")
+            if next_steps:
+                for i, line in enumerate(next_steps.split("\n"), 1):
+                    if line.strip():
+                        st.markdown(f"{i}. {line.strip()}")
+            else:
+                st.write("_Not specified._")
 
         # Evidence chains
         if evidence_chains:

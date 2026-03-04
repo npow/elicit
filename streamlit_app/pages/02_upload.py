@@ -33,11 +33,14 @@ def _wait_for_job(job_id: str, timeout_s: int = 90) -> dict:
     deadline = time.time() + timeout_s
     last = {}
     while time.time() < deadline:
-        resp = _api("get", f"/analysis/jobs/{job_id}")
-        resp.raise_for_status()
-        last = resp.json()
-        if last.get("status") in {"completed", "failed"}:
-            return last
+        try:
+            resp = _api("get", f"/analysis/jobs/{job_id}")
+            resp.raise_for_status()
+            last = resp.json()
+            if last.get("status") in {"completed", "failed"}:
+                return last
+        except httpx.HTTPError:
+            pass
         time.sleep(1.0)
     return last
 
@@ -86,7 +89,7 @@ with tab_paste:
                 )
                 resp.raise_for_status()
                 interview = resp.json()
-                st.success(f"Interview **{interview['title'] or interview['id']}** uploaded!")
+                st.success(f"Interview **{interview.get('title') or interview.get('id', 'Unknown')}** uploaded!")
                 st.rerun()
             except httpx.HTTPError as exc:
                 st.error(f"Upload failed: {exc}")
@@ -120,7 +123,7 @@ with tab_file:
                     )
                     resp.raise_for_status()
                     interview = resp.json()
-                    st.success(f"Interview **{interview['title'] or interview['id']}** uploaded!")
+                    st.success(f"Interview **{interview.get('title') or interview.get('id', 'Unknown')}** uploaded!")
                     st.rerun()
                 except httpx.HTTPError as exc:
                     st.error(f"Upload failed: {exc}")
@@ -149,12 +152,12 @@ for iv in interviews:
         col_info, col_actions = st.columns([3, 1])
 
         with col_info:
-            st.markdown(f"**{iv['title'] or 'Untitled'}**")
+            st.markdown(f"**{iv.get('title') or 'Untitled'}**")
             st.caption(
-                f"{iv['interviewee_name'] or 'Unknown'} "
-                f"| {iv['interviewee_role'] or 'N/A'} "
-                f"| Status: {iv['status']} "
-                f"| Source: {iv['source_type']} "
+                f"{iv.get('interviewee_name') or 'Unknown'} "
+                f"| {iv.get('interviewee_role') or 'N/A'} "
+                f"| Status: {iv.get('status', 'unknown')} "
+                f"| Source: {iv.get('source_type', 'unknown')} "
                 f"| {iv['created_at'][:10] if iv.get('created_at') else ''}"
             )
 

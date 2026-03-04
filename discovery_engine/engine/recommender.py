@@ -12,6 +12,12 @@ from discovery_engine.models.extraction import Job, PainPoint, Workaround, Oppor
 from discovery_engine.models.synthesis import CrossInterviewPattern
 from discovery_engine.models.recommendation import Recommendation, EvidenceChain
 from discovery_engine.schemas.recommendation import RecommendationExtracted
+from discovery_engine.schemas.normalization import text_similarity
+
+# Minimum Jaccard similarity for an extraction to count as supporting evidence.
+_EVIDENCE_THRESHOLD = 0.06
+# Maximum total evidence items per recommendation (ranked by relevance).
+_MAX_EVIDENCE = 12
 
 
 class RecommendationEngine:
@@ -74,6 +80,8 @@ class RecommendationEngine:
         )
         raw = await complete(prompt, tier="primary", task_type="recommendation")
         parsed = parse_llm_list(raw, RecommendationExtracted)
+        if not parsed:
+            parsed = self._fallback_recommendations(patterns, opportunities)
 
         # Delete old recommendations for this project and their evidence chains.
         existing_recommendations = (
@@ -100,7 +108,7 @@ class RecommendationEngine:
                 priority_rank=rank,
                 category=item.category,
                 confidence=item.confidence,
-                supporting_interview_count=len(interviews),
+                supporting_interview_count=0,
                 rationale=item.rationale,
                 risks=item.risks,
                 next_steps=item.next_steps,
@@ -110,63 +118,109 @@ class RecommendationEngine:
 
             # Build evidence chains from related extractions
             evidence = self._build_evidence_chains(rec, interview_ids)
+            rec.supporting_interview_count = len({c.interview_id for c in evidence})
             recommendations.append(rec)
 
         self.db.commit()
         return recommendations
 
+    def _fallback_recommendations(
+        self,
+        patterns: list[CrossInterviewPattern],
+        opportunities: list[Opportunity],
+    ) -> list[RecommendationExtracted]:
+        """Deterministic fallback recommendations when LLM parsing yields no items."""
+        recs: list[RecommendationExtracted] = []
+
+        # opportunity_score is 0-20 per the prompt specification.
+        for opp in opportunities[:5]:
+            raw = opp.opportunity_score or 0.0
+            normalized = min(1.0, raw / 20.0)  # opportunity_score is always 0-20
+            recs.append(
+                RecommendationExtracted(
+                    title=f"Address: {opp.description[:90]}",
+                    description=(
+                        "Prioritize a focused solution for this recurring opportunity and validate it "
+                        "with a small experiment tied to measurable outcomes."
+                    ),
+                    priority_score=max(0.1, float(normalized)),
+                    category="build_now",
+                    confidence=0.65,
+                    rationale="Derived from top opportunity scoring across analyzed interviews.",
+                    risks="Risk of overfitting a single segment without follow-up validation.",
+                    next_steps="Define MVP hypothesis, ship prototype, and run 5 targeted interviews.",
+                )
+            )
+            if len(recs) >= 3:
+                break
+
+        if len(recs) < 3:
+            for pattern in sorted(patterns, key=lambda p: p.strength or 0.0, reverse=True):
+                recs.append(
+                    RecommendationExtracted(
+                        title=f"Exploit recurring pattern: {pattern.description[:80]}",
+                        description=(
+                            "Translate this cross-interview pattern into a concrete product bet with "
+                            "clear success metrics."
+                        ),
+                        priority_score=max(0.1, min(0.9, pattern.strength or 0.0)),
+                        category="iterate",
+                        confidence=max(0.55, min(0.85, pattern.confidence or 0.6)),
+                        rationale="Pattern recurs across multiple interviews.",
+                        risks="Pattern may be too broad without segment-specific scoping.",
+                        next_steps="Define segment, design experiment, and instrument adoption/failure signals.",
+                    )
+                )
+                if len(recs) >= 3:
+                    break
+
+        return recs
+
     def _build_evidence_chains(
         self, recommendation: Recommendation, interview_ids: list[str]
     ) -> list[EvidenceChain]:
-        """Link a recommendation back to supporting evidence from interviews."""
-        chains = []
+        """Link a recommendation to supporting evidence using text similarity."""
+        rec_text = recommendation.title + " " + recommendation.description
+        candidates: list[tuple[float, str, str, str, str]] = []
+        # (relevance, evidence_type, interview_id, source_id, quote)
 
-        # Find supporting jobs
-        jobs = (
-            self.db.query(Job)
-            .filter(Job.interview_id.in_(interview_ids))
-            .all()
-        )
+        jobs = self.db.query(Job).filter(Job.interview_id.in_(interview_ids)).all()
         for job in jobs:
-            # Simple keyword matching for evidence linking
-            if _text_overlap(recommendation.title + " " + recommendation.description, job.statement):
-                chain = EvidenceChain(
-                    recommendation_id=recommendation.id,
-                    interview_id=job.interview_id,
-                    evidence_type="job",
-                    source_id=job.id,
-                    quote=job.supporting_quote,
-                    relevance_score=0.7,
-                )
-                self.db.add(chain)
-                chains.append(chain)
+            score = text_similarity(rec_text, job.statement + " " + (job.supporting_quote or ""))
+            if score >= _EVIDENCE_THRESHOLD:
+                candidates.append((score, "job", job.interview_id, job.id, job.supporting_quote or job.statement))
 
-        # Find supporting pain points
-        pains = (
-            self.db.query(PainPoint)
-            .filter(PainPoint.interview_id.in_(interview_ids))
-            .all()
-        )
+        pains = self.db.query(PainPoint).filter(PainPoint.interview_id.in_(interview_ids)).all()
         for pain in pains:
-            if _text_overlap(recommendation.title + " " + recommendation.description, pain.description):
-                chain = EvidenceChain(
-                    recommendation_id=recommendation.id,
-                    interview_id=pain.interview_id,
-                    evidence_type="pain",
-                    source_id=pain.id,
-                    quote=pain.supporting_quote,
-                    relevance_score=0.7,
-                )
-                self.db.add(chain)
-                chains.append(chain)
+            score = text_similarity(rec_text, pain.description + " " + (pain.supporting_quote or ""))
+            if score >= _EVIDENCE_THRESHOLD:
+                candidates.append((score, "pain", pain.interview_id, pain.id, pain.supporting_quote or pain.description))
+
+        workarounds = self.db.query(Workaround).filter(Workaround.interview_id.in_(interview_ids)).all()
+        for wa in workarounds:
+            score = text_similarity(rec_text, wa.description + " " + (wa.supporting_quote or ""))
+            if score >= _EVIDENCE_THRESHOLD:
+                candidates.append((score, "workaround", wa.interview_id, wa.id, wa.supporting_quote or wa.description))
+
+        opportunities = self.db.query(Opportunity).filter(Opportunity.interview_id.in_(interview_ids)).all()
+        for opp in opportunities:
+            score = text_similarity(rec_text, opp.description)
+            if score >= _EVIDENCE_THRESHOLD:
+                candidates.append((score, "opportunity", opp.interview_id, opp.id, opp.description))
+
+        # Keep only the top-N most relevant, sorted by score descending.
+        candidates.sort(key=lambda x: x[0], reverse=True)
+        chains = []
+        for relevance, ev_type, interview_id, source_id, quote in candidates[:_MAX_EVIDENCE]:
+            chain = EvidenceChain(
+                recommendation_id=recommendation.id,
+                interview_id=interview_id,
+                evidence_type=ev_type,
+                source_id=source_id,
+                quote=quote,
+                relevance_score=round(relevance, 3),
+            )
+            self.db.add(chain)
+            chains.append(chain)
 
         return chains
-
-
-def _text_overlap(text_a: str, text_b: str, threshold: int = 3) -> bool:
-    """Check if two texts share enough significant words to be related."""
-    stop_words = {"the", "a", "an", "is", "are", "was", "were", "to", "for", "of", "in", "on", "and", "or", "with", "that", "this", "it", "not", "be", "have", "has", "do", "does", "from", "they", "their", "i", "we", "you", "my", "our"}
-    words_a = {w.lower() for w in text_a.split() if len(w) > 2 and w.lower() not in stop_words}
-    words_b = {w.lower() for w in text_b.split() if len(w) > 2 and w.lower() not in stop_words}
-    overlap = words_a & words_b
-    return len(overlap) >= threshold

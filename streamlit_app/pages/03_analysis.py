@@ -27,21 +27,28 @@ def _require_project() -> str:
     return pid
 
 
-def _render_confidence_bar(confidence: float) -> None:
+def _render_confidence_bar(confidence) -> None:
     """Render a small confidence indicator."""
-    pct = int(confidence * 100)
-    st.progress(confidence, text=f"Confidence: {pct}%")
+    try:
+        conf_val = float(confidence or 0)
+    except (TypeError, ValueError):
+        conf_val = 0.0
+    conf_val = max(0.0, min(1.0, conf_val))
+    st.progress(conf_val, text=f"Confidence: {int(conf_val * 100)}%")
 
 
 def _wait_for_job(job_id: str, timeout_s: int = 120) -> dict:
     deadline = time.time() + timeout_s
     last = {}
     while time.time() < deadline:
-        resp = _api("get", f"/analysis/jobs/{job_id}")
-        resp.raise_for_status()
-        last = resp.json()
-        if last.get("status") in {"completed", "failed"}:
-            return last
+        try:
+            resp = _api("get", f"/analysis/jobs/{job_id}")
+            resp.raise_for_status()
+            last = resp.json()
+            if last.get("status") in {"completed", "failed"}:
+                return last
+        except httpx.HTTPError:
+            pass
         time.sleep(1.0)
     return last
 
@@ -170,9 +177,9 @@ with tab_opps:
         with st.container(border=True):
             st.markdown(f"**{o['description']}**")
             cols = st.columns(3)
-            cols[0].metric("Opportunity Score", f"{o.get('opportunity_score', 0):.2f}")
-            cols[1].metric("Importance", f"{o.get('importance_score', 0):.2f}")
-            cols[2].metric("Satisfaction", f"{o.get('satisfaction_score', 0):.2f}")
+            cols[0].metric("Opportunity Score", f"{float(o.get('opportunity_score') or 0):.2f}")
+            cols[1].metric("Importance", f"{float(o.get('importance_score') or 0):.2f}")
+            cols[2].metric("Satisfaction", f"{float(o.get('satisfaction_score') or 0):.2f}")
             if o.get("market_size_indicator"):
                 st.write(f"Market Size: {o['market_size_indicator']}")
             _render_confidence_bar(o.get("confidence", 0.0))
@@ -184,7 +191,13 @@ with tab_opps:
 st.divider()
 st.subheader("Cross-Interview Synthesis")
 
-if st.button("Run Synthesis Across All Interviews"):
+col_synth, col_retry = st.columns([3, 1])
+with col_synth:
+    run_synthesis = st.button("Run Synthesis Across All Interviews")
+with col_retry:
+    retry_synthesis = st.button("Retry Last Failed", key="retry_synth")
+
+if run_synthesis or retry_synthesis:
     with st.spinner("Queueing synthesis ..."):
         try:
             resp = _api("post", f"/analysis/jobs/synthesize/{project_id}")
@@ -197,6 +210,7 @@ if st.button("Run Synthesis Across All Interviews"):
                 st.rerun()
             elif final.get("status") == "failed":
                 st.error(f"Synthesis failed: {final.get('error_message', 'unknown error')}")
+                st.caption("Check that at least 2 interviews have been extracted successfully.")
             else:
                 st.info(f"Synthesis job queued: `{job['id']}` (still running)")
         except httpx.HTTPError as exc:
@@ -211,8 +225,11 @@ except httpx.HTTPError as exc:
     st.error(f"Failed to load patterns: {exc}")
     patterns = []
 
-if not patterns:
-    st.info("No cross-interview patterns yet. Run synthesis above after extracting multiple interviews.")
+analyzed_count = sum(1 for iv in interviews if iv.get("status") == "analyzed")
+if analyzed_count < 2:
+    st.info(f"Synthesis requires at least 2 analyzed interviews. You have {analyzed_count}/{len(interviews)} analyzed.")
+elif not patterns:
+    st.info("No cross-interview patterns yet. Run synthesis above.")
 else:
     for pat in patterns:
         with st.container(border=True):
@@ -235,3 +252,11 @@ else:
                     else:
                         st.write(quotes)
             _render_confidence_bar(pat.get("confidence", 0.0))
+
+    st.divider()
+    st.success(
+        f"Synthesis complete — {len(patterns)} pattern(s) found across {analyzed_count} interviews. "
+        "**Next: generate prioritized recommendations.**"
+    )
+    if st.button("Go to Recommendations →", type="primary"):
+        st.switch_page("pages/05_recommendations.py")
