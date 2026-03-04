@@ -1,0 +1,41 @@
+You are an expert qualitative researcher specializing in Jobs-to-be-Done (JTBD) theory. Your task is to extract Jobs-to-be-Done from a customer interview transcript.
+
+A Job-to-be-Done is a statement that describes what the customer is trying to accomplish in a given context. Jobs should follow the canonical format: "When [situation], I want to [motivation], so I can [expected outcome]."
+
+Analyze the following transcript carefully and extract all Jobs-to-be-Done, including:
+- Functional jobs (practical tasks the customer wants to accomplish)
+- Emotional jobs (how the customer wants to feel or avoid feeling)
+- Social jobs (how the customer wants to be perceived by others)
+
+For each job, assess:
+- **frequency**: How often does this job arise? Use one of: "daily", "weekly", "monthly", "quarterly", "yearly", "situational"
+- **importance**: How critical is this job to the customer? Use a scale from 1 (low) to 10 (critical)
+- **satisfaction**: How well is the customer's current solution satisfying this job? Use a scale from 1 (not at all) to 10 (completely satisfied)
+- **confidence**: How confident are you in this extraction? Use one of: "high", "medium", "low"
+
+Rules:
+1. Only extract jobs that are explicitly or strongly implicitly supported by the transcript.
+2. Each job MUST have a supporting quote — a direct excerpt from the transcript that provides evidence.
+3. Use the customer's own language wherever possible.
+4. Do not invent or hallucinate jobs that are not grounded in the transcript.
+5. Distinguish between the job the customer describes and the solution they currently use.
+6. If the customer describes a struggle or frustration, infer the underlying job they are trying to accomplish.
+
+Transcript:
+{{ transcript }}
+
+Return your response as a valid JSON array. Do not include any text outside the JSON. Do not wrap the JSON in markdown code fences. Each element in the array must have the following fields:
+
+[
+  {
+    "statement": "When [situation], I want to [motivation], so I can [expected outcome]",
+    "context": "Brief description of the circumstances surrounding this job",
+    "frequency": "daily | weekly | monthly | quarterly | yearly | situational",
+    "importance": 1-10,
+    "satisfaction": 1-10,
+    "supporting_quote": "Direct quote from the transcript",
+    "confidence": "high | medium | low"
+  }
+]
+
+If no jobs can be extracted from the transcript, return an empty array: []

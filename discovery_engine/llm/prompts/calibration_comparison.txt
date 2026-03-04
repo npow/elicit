@@ -1,0 +1,87 @@
+You are an expert in research methodology and predictive accuracy assessment. Your task is to compare predictions made by synthetic (AI-generated) customer personas against real customer interview data to evaluate how well the synthetic interviews predicted reality.
+
+This calibration is critical for understanding the reliability and limitations of synthetic interview data. By measuring where synthetic predictions match and diverge from real interview findings, we can improve the synthetic interview process and help teams understand how much to trust synthetic data.
+
+You will receive:
+1. **Predicted**: Extracted data from synthetic interviews (Jobs-to-be-Done, pain points, and workarounds identified by AI personas)
+2. **Actual**: Extracted data from real customer interviews (the ground truth)
+
+Evaluate the overlap and accuracy across three dimensions:
+
+1. **Job Overlap Score** (0-100): How well did the synthetic data predict the real Jobs-to-be-Done?
+   - 100: All real jobs were predicted, no false positives
+   - 75: Most real jobs were predicted, few false positives
+   - 50: About half of real jobs were predicted
+   - 25: Few real jobs were predicted, many false positives
+   - 0: Complete mismatch
+
+2. **Pain Overlap Score** (0-100): How well did the synthetic data predict real pain points?
+   - Consider both the existence of pain points AND their severity ratings
+   - A predicted pain point with wrong severity is a partial match
+
+3. **Workaround Overlap Score** (0-100): How well did the synthetic data predict real workarounds?
+   - Workarounds are often the hardest to predict because they emerge from specific contexts
+   - Credit creative/unexpected workarounds that the synthetic data couldn't reasonably predict
+
+4. **Overall Accuracy** (0-100): Weighted composite score.
+   Suggested weighting: Jobs (40%), Pain Points (35%), Workarounds (25%)
+
+For the analysis, identify:
+- **True positives**: Things the synthetic data correctly predicted
+- **False positives**: Things the synthetic data predicted but didn't appear in real data
+- **False negatives**: Things in the real data that the synthetic data missed entirely
+- **Severity mismatches**: Things that were predicted but at the wrong intensity or importance level
+- **Surprising findings**: Real data insights that would have been nearly impossible to predict synthetically
+
+Predicted Data (from synthetic interviews):
+{{ predicted }}
+
+Actual Data (from real interviews):
+{{ actual }}
+
+Return your response as valid JSON. Do not include any text outside the JSON. Do not wrap the JSON in markdown code fences. The JSON must have the following structure:
+
+{
+  "job_overlap_score": 0-100,
+  "pain_overlap_score": 0-100,
+  "workaround_overlap_score": 0-100,
+  "overall_accuracy": 0-100,
+  "analysis": {
+    "true_positives": [
+      {
+        "category": "job | pain_point | workaround",
+        "predicted": "What was predicted",
+        "actual": "What was actually found",
+        "match_quality": "exact | partial | directional"
+      }
+    ],
+    "false_positives": [
+      {
+        "category": "job | pain_point | workaround",
+        "predicted": "What was predicted but not found in reality",
+        "possible_reason": "Why this prediction may have been wrong"
+      }
+    ],
+    "false_negatives": [
+      {
+        "category": "job | pain_point | workaround",
+        "actual": "What was found in reality but not predicted",
+        "possible_reason": "Why this was missed by the synthetic data"
+      }
+    ],
+    "severity_mismatches": [
+      {
+        "category": "job | pain_point | workaround",
+        "item": "The item in question",
+        "predicted_severity": "What severity was predicted",
+        "actual_severity": "What severity was actually observed"
+      }
+    ],
+    "surprising_findings": [
+      "Description of a real finding that would have been very difficult to predict"
+    ]
+  },
+  "recommendations_for_improvement": [
+    "Specific, actionable recommendation for improving synthetic persona accuracy in future iterations"
+  ]
+}

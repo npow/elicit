@@ -1,0 +1,51 @@
+Interviewer: Thanks for taking the time to chat today. Can you tell me about your current role?
+
+Sarah: Sure, I'm a product manager at a mid-stage B2B SaaS company. We have about 200 employees and serve enterprise clients in the financial services space.
+
+Interviewer: What does a typical week look like for you?
+
+Sarah: It's pretty hectic. I spend a lot of time trying to figure out what to build next. We get feature requests from sales, support tickets from customers, and then there's our own strategic vision. The hardest part is prioritizing all of that.
+
+Interviewer: When you say prioritizing is hard, can you walk me through what that actually looks like?
+
+Sarah: Yeah, so every quarter we do a planning cycle. I'll have maybe 50 different feature requests and ideas. I need to figure out which ones will actually move the needle for our customers. The problem is I don't really have good data on what customers actually need versus what they say they want.
+
+Interviewer: What do you mean by the difference between what they need and what they say they want?
+
+Sarah: Well, customers will ask for very specific things like "add a CSV export button" but the underlying need might be "I need to share data with my finance team." If I just build the CSV export, I might miss a better solution. But figuring out that underlying need takes a lot of work.
+
+Interviewer: How do you currently try to figure out those underlying needs?
+
+Sarah: We do customer interviews, but honestly they're not great. I'll do maybe 5-6 interviews a quarter, and half the time I come out with conflicting information. I think part of the problem is I'm not great at asking the right questions. I tend to accidentally lead the customer toward confirming what I already think.
+
+Interviewer: Can you give me a specific example of that?
+
+Sarah: Last month I was investigating whether we should build a dashboard feature. I asked a customer "Would a dashboard help you track your metrics better?" and of course they said yes. But that didn't really tell me anything useful. Later I realized I should have asked what they currently do to track metrics and what's frustrating about it.
+
+Interviewer: After you do the interviews, what happens with that information?
+
+Sarah: That's another pain point. I take notes during the interview, sometimes I record it, but then all that information just sits in my Google Docs. When planning time comes around, I'm trying to remember what people said three months ago. I'll search through my notes but it's really hard to find patterns across multiple interviews.
+
+Interviewer: How much time would you say you spend trying to synthesize interview data?
+
+Sarah: Probably 2-3 full days per quarter just re-reading notes and trying to pull out themes. And even then, I'm not confident I'm catching everything. It's really manual — I'll highlight things, copy paste into a spreadsheet, try to tag them. It's a mess.
+
+Interviewer: Have you tried any tools to help with this?
+
+Sarah: I've tried a few things. We use Dovetail for a while but it felt like overkill — too much setup for our team size. I tried just using Notion with some databases but it was hard to maintain. Right now I'm basically using Google Docs and a spreadsheet, which I know isn't ideal.
+
+Interviewer: What specifically didn't work about Dovetail?
+
+Sarah: The tagging system was really rigid. I'd have to pre-define my tags before I knew what I was looking for. In customer discovery, you don't always know the categories upfront — they emerge from the data. Also it was expensive for what we were using it for.
+
+Interviewer: If you think about the whole process from interview to product decision, what's the most frustrating part?
+
+Sarah: Honestly, it's the gap between "I have a bunch of interviews" and "I know what to build." That synthesis step. I can do individual interviews okay, but connecting the dots across 10 interviews to find the real patterns — that's where I feel like I'm just guessing. And then when I present my recommendations to leadership, I can't really trace back to specific evidence. It's like "trust me, I talked to customers." That doesn't fly anymore.
+
+Interviewer: How does your leadership team currently make product decisions?
+
+Sarah: They want data-driven decisions, which I get. But the "data" from qualitative interviews is hard to present that way. I end up putting together these long decks with cherry-picked quotes, and I know I'm unconsciously picking the quotes that support what I already believe. I wish I had a more systematic way to go from interview data to prioritized recommendations.
+
+Interviewer: Have you ever had a situation where you built something based on interview data and it turned out to be wrong?
+
+Sarah: Oh yeah. We spent a quarter building an advanced reporting feature because three customers mentioned wanting "better reports." Turns out what they actually needed was better data visualization in the existing workflow, not a separate reporting module. We could have caught that if we'd dug deeper into their actual workflow. That was probably $200K in wasted engineering time.

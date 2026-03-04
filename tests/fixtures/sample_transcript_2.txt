@@ -1,0 +1,47 @@
+Interviewer: Thanks for joining, Marcus. Can you tell me about what you do?
+
+Marcus: I run product at a Series A startup. We're in the HR tech space, about 40 people. I'm the only PM so I wear a lot of hats.
+
+Interviewer: What's your biggest challenge right now?
+
+Marcus: Honestly, customer discovery. We're at this stage where we think we have product-market fit for our core feature, but we need to figure out where to expand. The problem is I don't have time to do proper customer research. I maybe get to do 2-3 interviews a month, and I need like 10-15 to feel confident about a direction.
+
+Interviewer: What happens when you can't do enough interviews?
+
+Marcus: I end up making decisions based on gut feel and whatever the loudest customer told us most recently. Which is not great. Our last two features were basically built because our biggest customer threatened to churn if we didn't add them. But those features didn't help us acquire new customers at all.
+
+Interviewer: Tell me more about what happens when you do conduct interviews.
+
+Marcus: It's pretty ad hoc. I'll reach out to customers, schedule something, hop on a Zoom call. I don't really have a structured approach. Sometimes I wing it, sometimes I write questions beforehand. The quality is inconsistent.
+
+Interviewer: What happens after the interview?
+
+Marcus: I jot down notes in whatever doc I have open. Sometimes I'll share key points in Slack. But there's no system. If you asked me to find something a customer said two months ago, I'd have no idea where to look.
+
+Interviewer: Have you tried to be more systematic about it?
+
+Marcus: I tried setting up a user research repository in Notion once. Spent a whole weekend on it. Used it for like two weeks and then it fell apart because the overhead of tagging and organizing everything was too much for one person. The tool needs to do that work for me, not create more work.
+
+Interviewer: What would "doing that work for you" look like?
+
+Marcus: If I could just dump a transcript in and get out structured insights — like here are the jobs they're trying to do, here are their biggest pains, here's what they're doing today to work around the problem — that would be incredible. Right now I'm doing all that synthesis manually in my head, and I know I'm missing things.
+
+Interviewer: When you say you're missing things, can you give an example?
+
+Marcus: Yeah, I had this moment last month where I was reviewing old notes and realized three different customers had all mentioned the same workflow problem, but I hadn't connected the dots at the time. Each interview felt different because the customers used different words, but the underlying issue was the same. I only caught it by accident.
+
+Interviewer: How do you currently present findings to your team?
+
+Marcus: I do a monthly "voice of customer" update in our all-hands. But it's basically me summarizing from memory and picking the most interesting stories. My co-founder always asks "how many customers said this?" and I can never give a precise answer. It undermines credibility.
+
+Interviewer: What about before interviews — do you prepare?
+
+Marcus: Not as much as I should. I know about the Mom Test — I read the book — but in practice, when I'm on a call, I fall back into bad habits. I'll pitch our solution instead of asking about their problem. I'll ask hypothetical questions instead of asking about past behavior. A coach or checklist that could keep me honest would be really valuable.
+
+Interviewer: Have you looked at any tools in this space?
+
+Marcus: I looked at Dovetail, UserTesting, Grain. Dovetail is too complex for a solo PM. UserTesting is really about usability testing, not discovery interviews. Grain is great for clips but doesn't help with synthesis. What I really want is something purpose-built for the customer discovery workflow — from preparing for interviews, to doing them, to making sense of what you heard.
+
+Interviewer: If you could wave a magic wand, what would be different about your discovery process?
+
+Marcus: I'd want to practice interviews before doing them for real. Like have a simulated customer I could practice my questions on, that would call me out if I'm asking leading questions. And then after real interviews, I want the patterns to just emerge automatically. Show me "these 5 customers all have this same unmet need" without me having to manually tag and cross-reference everything.

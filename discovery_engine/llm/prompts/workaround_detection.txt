@@ -1,0 +1,43 @@
+You are an expert qualitative researcher specializing in detecting workarounds, hacks, and compensatory behaviors in customer interviews. Your task is to extract all workarounds from a customer interview transcript.
+
+A workaround is any non-standard, improvised, or jury-rigged solution that a customer uses to accomplish a task because the existing tools or processes are inadequate. Workarounds are powerful signals of unmet needs — they represent situations where customers are so motivated to get a job done that they invest extra effort to create their own solutions.
+
+Types of workarounds to look for:
+- **Tool substitution**: Using a tool for something it was not designed for (e.g., using spreadsheets as a database)
+- **Manual processes**: Doing by hand what should be automated
+- **Multi-tool chaining**: Stringing together multiple tools to accomplish a single task
+- **Social workarounds**: Relying on people or relationships to compensate for tool deficiencies
+- **Information hoarding**: Maintaining personal copies, notes, or shadow systems
+- **Process hacks**: Unofficial steps added to an official process
+- **Avoidance**: Deliberately skipping or delaying tasks because the process is too painful
+
+For each workaround, assess:
+- **effort_level**: How much effort does this workaround require? Use one of: "trivial", "moderate", "significant", "extreme"
+- **satisfaction_with_workaround**: How satisfied is the customer with their workaround? Use one of: "satisfied", "acceptable", "frustrated", "desperate"
+- **confidence**: How confident are you in this extraction? Use one of: "high", "medium", "low"
+
+Rules:
+1. Only extract workarounds that are explicitly described or strongly implied by the transcript.
+2. Each workaround MUST have a supporting quote — a direct excerpt from the transcript.
+3. Pay attention to phrases like "what I do instead is", "I just use", "I end up having to", "my hack is", "I cobbled together", "I copy-paste from".
+4. Note the specific tools, spreadsheets, scripts, or manual steps involved.
+5. Workarounds often reveal the gap between what a customer needs and what their current tools provide.
+6. Do not invent or hallucinate workarounds not grounded in the transcript.
+
+Transcript:
+{{ transcript }}
+
+Return your response as a valid JSON array. Do not include any text outside the JSON. Do not wrap the JSON in markdown code fences. Each element in the array must have the following fields:
+
+[
+  {
+    "description": "Clear description of the workaround and what job it addresses",
+    "tools_used": ["List", "of", "tools", "or", "methods", "involved"],
+    "effort_level": "trivial | moderate | significant | extreme",
+    "satisfaction_with_workaround": "satisfied | acceptable | frustrated | desperate",
+    "supporting_quote": "Direct quote from the transcript",
+    "confidence": "high | medium | low"
+  }
+]
+
+If no workarounds can be extracted from the transcript, return an empty array: []

@@ -1,0 +1,24 @@
+[Paraphrased demo transcript]
+Source inspiration: https://jobstobedone.org/news/jobs-to-be-done-camera-interview/
+Notes: This is a condensed paraphrase for product demo/testing, not a verbatim copy.
+
+Interviewer: Tell me about the purchase you were trying to make.
+Interviewee: I wanted a serious camera setup for travel and side projects. My phone photos were fine for social use, but not reliable for the quality I needed.
+
+Interviewer: What was your process?
+Interviewee: I compared models, watched reviews, and built a shortlist. I wasn't only buying a body; I needed lenses, memory cards, and a dependable place to purchase everything together.
+
+Interviewer: Where did things break down?
+Interviewee: Fulfillment reliability. I placed orders with a big retailer and ran into cancellations and confusing status updates. Inventory looked available, then wasn't. That uncertainty wasted days.
+
+Interviewer: How did you respond?
+Interviewee: I split purchases across multiple stores and kept backup options open. It was a workaround: more tabs, more shipping fees, more stress.
+
+Interviewer: What mattered most in your decision?
+Interviewee: Confidence that the exact kit would arrive on time. Product specs mattered, but execution mattered more. I wanted one clean transaction.
+
+Interviewer: What emotions were present?
+Interviewee: Excitement about creating better work, mixed with frustration from checkout failures. I felt blocked by operations, not by product choice.
+
+Interviewer: If a better solution existed, what would it do?
+Interviewee: Verify stock accuracy, reserve inventory, and bundle all essentials in one checkout with clear delivery guarantees.
