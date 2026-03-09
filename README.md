@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/npow/elicit/actions/workflows/ci.yml/badge.svg)](https://github.com/npow/elicit/actions/workflows/ci.yml)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE) [![Docs](https://img.shields.io/badge/docs-mintlify-18a34a?style=flat-square)](https://mintlify.com/npow/elicit)
 
 You did the interviews. You took the notes. But now you're staring at a pile of Google Docs trying to remember what that one PM said three months ago about dashboards. Sound familiar?
 
